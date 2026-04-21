@@ -1,0 +1,551 @@
+openapi: 3.0.3
+info:
+  title: Song Hong Invoice API
+  version: 1.0.0
+  description: |
+    OpenAPI specification for invoice management.
+    This spec is aligned with the current frontend invoice data model.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: https://api.songhong.vn
+    description: Production
+
+tags:
+  - name: Invoices
+    description: Invoice CRUD and listing
+  - name: Payments
+    description: Payment recording for invoices
+
+paths:
+  /api/invoices:
+    get:
+      tags: [Invoices]
+      summary: List invoices
+      description: Returns paginated invoice list with optional filters.
+      parameters:
+        - in: query
+          name: status
+          schema:
+            $ref: '#/components/schemas/InvoiceStatus'
+          description: Filter by invoice status.
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search by invoice number or client name.
+        - in: query
+          name: fromDate
+          schema:
+            type: string
+            format: date
+          description: Filter invoices with invoiceDate >= fromDate.
+        - in: query
+          name: toDate
+          schema:
+            type: string
+            format: date
+          description: Filter invoices with invoiceDate <= toDate.
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [invoiceDate, createdAt, updatedAt, total]
+            default: createdAt
+        - in: query
+          name: sortOrder
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Invoice list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceListResponse'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags: [Invoices]
+      summary: Create invoice
+      description: |
+        Creates a new invoice.
+        Server should recalculate line totals, total, and remaining amount.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateRequest'
+      responses:
+        '201':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/invoices/{id}:
+    get:
+      tags: [Invoices]
+      summary: Get invoice detail
+      parameters:
+        - $ref: '#/components/parameters/InvoiceId'
+      responses:
+        '200':
+          description: Invoice detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      tags: [Invoices]
+      summary: Update invoice
+      description: |
+        Partial update for invoice info and items.
+        Server should recalculate line totals, total, and remaining amount.
+      parameters:
+        - $ref: '#/components/parameters/InvoiceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceUpdateRequest'
+      responses:
+        '200':
+          description: Updated invoice
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags: [Invoices]
+      summary: Delete invoice
+      parameters:
+        - $ref: '#/components/parameters/InvoiceId'
+      responses:
+        '204':
+          description: Deleted successfully
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/invoices/{id}/status:
+    patch:
+      tags: [Invoices]
+      summary: Update invoice status
+      parameters:
+        - $ref: '#/components/parameters/InvoiceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/InvoiceStatus'
+      responses:
+        '200':
+          description: Updated invoice
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/invoices/{id}/payments:
+    post:
+      tags: [Payments]
+      summary: Record payment for an invoice
+      description: |
+        Adds one payment record to an invoice.
+        Server should update paidAmount and remaining automatically.
+      parameters:
+        - $ref: '#/components/parameters/InvoiceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentCreateRequest'
+      responses:
+        '201':
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [invoice, payment]
+                properties:
+                  invoice:
+                    $ref: '#/components/schemas/Invoice'
+                  payment:
+                    $ref: '#/components/schemas/PaymentRecord'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  parameters:
+    InvoiceId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+      description: Invoice ID.
+
+  schemas:
+    InvoiceStatus:
+      type: string
+      enum: [paid, pending, overdue]
+
+    Money:
+      type: number
+      format: double
+      minimum: 0
+      example: 1250000
+
+    InvoiceItemInput:
+      type: object
+      required: [productName, unit, quantity, unitPrice]
+      properties:
+        productName:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Tôn lạnh Đông Á 0.45mm
+        unit:
+          type: string
+          example: m²
+          description: Supported values are controlled by frontend dropdown.
+        length:
+          type: number
+          format: double
+          minimum: 0
+          nullable: true
+          example: 3.5
+        width:
+          type: number
+          format: double
+          minimum: 0
+          nullable: true
+          example: 1.2
+        quantity:
+          type: number
+          format: double
+          minimum: 0
+          example: 20
+        unitPrice:
+          $ref: '#/components/schemas/Money'
+
+    InvoiceItem:
+      allOf:
+        - $ref: '#/components/schemas/InvoiceItemInput'
+        - type: object
+          required: [itemTotal]
+          properties:
+            itemTotal:
+              $ref: '#/components/schemas/Money'
+
+    InvoiceBase:
+      type: object
+      properties:
+        invoiceNumber:
+          type: string
+          maxLength: 50
+          example: HD-2026-001
+        invoiceDate:
+          type: string
+          format: date
+          example: '2026-04-21'
+
+        companyName:
+          type: string
+          maxLength: 255
+          example: Công ty TNHH TM Dịch Vụ và Xây Dựng Sông Hồng
+        companyContact:
+          type: string
+          maxLength: 255
+          example: Vũ Hồng Vân
+        companyAddress:
+          type: string
+          maxLength: 500
+          example: 72 Trường Chinh, phường Phương Liệt, quận Thanh Xuân, Hà Nội
+        companyPhone:
+          type: string
+          maxLength: 30
+          example: '0912011951'
+        companyEmail:
+          type: string
+          format: email
+          nullable: true
+          example: songhong@gmail.com
+        companyBank:
+          type: string
+          maxLength: 255
+          example: 0018121972 SHB Vũ Hồng Vân
+        companyZalo:
+          type: string
+          maxLength: 255
+          example: zalo-đt 0912011951 - 0832564646
+
+        clientName:
+          type: string
+          maxLength: 255
+          example: Nguyễn Văn A
+        clientPhone:
+          type: string
+          maxLength: 30
+          nullable: true
+          example: '0987654321'
+        clientAddress:
+          type: string
+          maxLength: 500
+          nullable: true
+          example: Cầu Giấy, Hà Nội
+        clientTaxCode:
+          type: string
+          maxLength: 50
+          nullable: true
+          example: '0101234567'
+
+        status:
+          $ref: '#/components/schemas/InvoiceStatus'
+        paidAmount:
+          $ref: '#/components/schemas/Money'
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/InvoiceItemInput'
+
+    InvoiceCreateRequest:
+      allOf:
+        - $ref: '#/components/schemas/InvoiceBase'
+        - type: object
+          required:
+            - invoiceNumber
+            - invoiceDate
+            - companyName
+            - clientName
+            - items
+          properties:
+            status:
+              default: pending
+            paidAmount:
+              default: 0
+
+    InvoiceUpdateRequest:
+      allOf:
+        - $ref: '#/components/schemas/InvoiceBase'
+      description: Partial update. Send only fields that changed.
+
+    PaymentCreateRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          $ref: '#/components/schemas/Money'
+        paymentDate:
+          type: string
+          format: date-time
+          description: If omitted, server uses current time.
+        method:
+          type: string
+          enum: [cash, transfer, other]
+          default: transfer
+        note:
+          type: string
+          maxLength: 500
+          nullable: true
+
+    PaymentRecord:
+      type: object
+      required: [id, amount, paymentDate, method, createdAt]
+      properties:
+        id:
+          type: string
+          example: pay_01J2XYZABC
+        amount:
+          $ref: '#/components/schemas/Money'
+        paymentDate:
+          type: string
+          format: date-time
+        method:
+          type: string
+          enum: [cash, transfer, other]
+        note:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    Invoice:
+      allOf:
+        - $ref: '#/components/schemas/InvoiceBase'
+        - type: object
+          required:
+            - id
+            - invoiceNumber
+            - invoiceDate
+            - companyName
+            - clientName
+            - items
+            - total
+            - paidAmount
+            - remaining
+            - status
+            - createdAt
+            - updatedAt
+          properties:
+            id:
+              type: string
+              example: inv_01J2XYZABC
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/InvoiceItem'
+            total:
+              $ref: '#/components/schemas/Money'
+            paidAmount:
+              $ref: '#/components/schemas/Money'
+            remaining:
+              $ref: '#/components/schemas/Money'
+            payments:
+              type: array
+              items:
+                $ref: '#/components/schemas/PaymentRecord'
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+
+    PaginationMeta:
+      type: object
+      required: [page, limit, totalItems, totalPages]
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        totalItems:
+          type: integer
+          example: 156
+        totalPages:
+          type: integer
+          example: 8
+
+    InvoiceListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invoice'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    ErrorResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          example: Validation failed
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: items[0].quantity
+              message:
+                type: string
+                example: Quantity must be greater than 0
+
+x-notes:
+  business-rules:
+    - Recalculate itemTotal and total on server side; do not trust client totals.
+    - remaining is computed as total - paidAmount.
+    - For unit in [cây, chiếc, đơn vị lẻ, Tấm, Kg, cái], ignore length/width.
+    - For unit = mét dài, ignore width and use length only.
