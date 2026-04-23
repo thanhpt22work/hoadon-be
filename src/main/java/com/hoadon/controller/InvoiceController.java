@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/invoices")
 @RequiredArgsConstructor
@@ -23,6 +25,12 @@ public class InvoiceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
     
+    @GetMapping("/next-number")
+    public ResponseEntity<Map<String, String>> getNextInvoiceNumber() {
+        String nextNumber = invoiceService.getNextInvoiceNumber();
+        return ResponseEntity.ok(Map.of("nextNumber", nextNumber));
+    }
+
     @GetMapping
     public ResponseEntity<Page<InvoiceDTO>> getAllInvoices(
             @RequestParam(required = false) String status,

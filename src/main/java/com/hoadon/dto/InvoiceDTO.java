@@ -22,10 +22,15 @@ public class InvoiceDTO {
     private String companyAddress;
     private String companyPhone;
     private String companyEmail;
-    
+    private String companyBank;
+    private String companyZalo;
+
+    // Client (customer)
+    private Long customerId;
     private String clientName;
     private String clientAddress;
     private String clientPhone;
+    private String clientTaxCode;
     
     private List<InvoiceItemDTO> items;
     

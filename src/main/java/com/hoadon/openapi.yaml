@@ -14,10 +14,84 @@ servers:
 tags:
   - name: Invoices
     description: Invoice CRUD and listing
+  - name: Customers
+    description: Customer management
   - name: Payments
     description: Payment recording for invoices
 
 paths:
+  /api/customers:
+    get:
+      tags: [Customers]
+      summary: List customers
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search by name or phone
+      responses:
+        '200':
+          description: Customer list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+    post:
+      tags: [Customers]
+      summary: Create customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerRequest'
+      responses:
+        '201':
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+
+  /api/customers/{id}:
+    put:
+      tags: [Customers]
+      summary: Update customer
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerRequest'
+      responses:
+        '200':
+          description: Customer updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+    delete:
+      tags: [Customers]
+      summary: Delete customer
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+
   /api/invoices:
     get:
       tags: [Invoices]
@@ -110,6 +184,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /api/invoices/next-number:
+    get:
+      tags: [Invoices]
+      summary: Get next invoice number
+      description: |
+        Returns the next suggested invoice number by finding the invoice with the
+        highest numeric suffix and incrementing it by 1.
+        Example: if the latest is "HD-005", returns "HD-006".
+      responses:
+        '200':
+          description: Next invoice number
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [nextNumber]
+                properties:
+                  nextNumber:
+                    type: string
+                    example: HD-006
 
   /api/invoices/{id}:
     get:
@@ -268,6 +363,37 @@ components:
       description: Invoice ID.
 
   schemas:
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          example: Khách hàng A
+        address:
+          type: string
+          example: Số 5 Trường Chinh
+        phone:
+          type: string
+          example: '0912229999'
+        taxCode:
+          type: string
+          example: '0123456789'
+
+    CustomerRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        taxCode:
+          type: string
+
     InvoiceStatus:
       type: string
       enum: [paid, pending, overdue]

@@ -20,7 +20,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     
     Page<Invoice> findByStatus(InvoiceStatus status, Pageable pageable);
     
-    Page<Invoice> findByClientNameContainingIgnoreCase(String clientName, Pageable pageable);
+    Page<Invoice> findByCustomer_NameContainingIgnoreCase(String customerName, Pageable pageable);
     
     Page<Invoice> findByInvoiceDateBetween(LocalDate startDate, LocalDate endDate, Pageable pageable);
     
@@ -28,4 +28,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     
     @Query("SELECT i FROM Invoice i WHERE i.status = :status")
     Page<Invoice> findByStatusCustom(@Param("status") InvoiceStatus status, Pageable pageable);
+
+    @Query("SELECT i.invoiceNumber FROM Invoice i WHERE i.invoiceNumber IS NOT NULL")
+    List<String> findAllInvoiceNumbers();
 }

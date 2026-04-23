@@ -34,14 +34,14 @@ public class Invoice {
     private String companyAddress;
     private String companyPhone;
     private String companyEmail;
+    private String companyBank;
+    private String companyZalo;
     
-    // Client Information
-    @Column(nullable = false)
-    private String clientName;
-    
-    private String clientAddress;
-    private String clientPhone;
-    
+    // Customer (client) - FK → customers table
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
+
     // Invoice Details
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "invoice_id")

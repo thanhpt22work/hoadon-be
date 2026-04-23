@@ -2,9 +2,11 @@ package com.hoadon.service;
 
 import com.hoadon.dto.InvoiceDTO;
 import com.hoadon.dto.InvoiceItemDTO;
+import com.hoadon.entity.Customer;
 import com.hoadon.entity.Invoice;
 import com.hoadon.entity.InvoiceItem;
 import com.hoadon.entity.InvoiceStatus;
+import com.hoadon.repository.CustomerRepository;
 import com.hoadon.repository.InvoiceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,6 +28,7 @@ import java.util.stream.Collectors;
 public class InvoiceService {
     
     private final InvoiceRepository invoiceRepository;
+    private final CustomerRepository customerRepository;
     
     public InvoiceDTO createInvoice(InvoiceDTO invoiceDTO) {
         Invoice invoice = new Invoice();
@@ -37,11 +40,12 @@ public class InvoiceService {
         invoice.setCompanyAddress(invoiceDTO.getCompanyAddress());
         invoice.setCompanyPhone(invoiceDTO.getCompanyPhone());
         invoice.setCompanyEmail(invoiceDTO.getCompanyEmail());
+        invoice.setCompanyBank(invoiceDTO.getCompanyBank());
+        invoice.setCompanyZalo(invoiceDTO.getCompanyZalo());
         
-        invoice.setClientName(invoiceDTO.getClientName());
-        invoice.setClientAddress(invoiceDTO.getClientAddress());
-        invoice.setClientPhone(invoiceDTO.getClientPhone());
-        
+        Customer customer = resolveCustomer(invoiceDTO);
+        invoice.setCustomer(customer);
+
         // Create items
         if (invoiceDTO.getItems() != null) {
             List<InvoiceItem> items = invoiceDTO.getItems().stream()
@@ -78,11 +82,13 @@ public class InvoiceService {
         invoice.setCompanyAddress(invoiceDTO.getCompanyAddress());
         invoice.setCompanyPhone(invoiceDTO.getCompanyPhone());
         invoice.setCompanyEmail(invoiceDTO.getCompanyEmail());
+        invoice.setCompanyBank(invoiceDTO.getCompanyBank());
+        invoice.setCompanyZalo(invoiceDTO.getCompanyZalo());
         
-        invoice.setClientName(invoiceDTO.getClientName());
-        invoice.setClientAddress(invoiceDTO.getClientAddress());
-        invoice.setClientPhone(invoiceDTO.getClientPhone());
-        
+        Customer customer = customerRepository.findById(invoiceDTO.getCustomerId())
+                .orElseThrow(() -> new RuntimeException("Customer not found: " + invoiceDTO.getCustomerId()));
+        invoice.setCustomer(customer);
+
         // Update items
         if (invoiceDTO.getItems() != null) {
             invoice.getItems().clear();
@@ -130,7 +136,7 @@ public class InvoiceService {
     }
     
     public Page<InvoiceDTO> searchInvoices(String keyword, Pageable pageable) {
-        return invoiceRepository.findByClientNameContainingIgnoreCase(keyword, pageable)
+        return invoiceRepository.findByCustomer_NameContainingIgnoreCase(keyword, pageable)
                 .map(this::convertToDTO);
     }
 
@@ -186,6 +192,17 @@ public class InvoiceService {
         return convertToDTO(updated);
     }
 
+    public String getNextInvoiceNumber() {
+        List<String> numbers = invoiceRepository.findAllInvoiceNumbers();
+        int maxSuffix = numbers.stream()
+                .map(n -> n.replaceAll(".*-(\\d+)$", "$1"))
+                .filter(n -> n.matches("\\d+"))
+                .mapToInt(Integer::parseInt)
+                .max()
+                .orElse(0);
+        return String.format("HD-%03d", maxSuffix + 1);
+    }
+
     public Object addPaymentToInvoice(String id, Object paymentRequest) {
         Invoice invoice = invoiceRepository.findById(parseId(id))
                 .orElseThrow(() -> new RuntimeException("Invoice not found"));
@@ -200,6 +217,25 @@ public class InvoiceService {
 
         Invoice updated = invoiceRepository.save(invoice);
         return convertToDTO(updated);
+    }
+
+    /**
+     * Tìm customer theo SĐT. Nếu đã tồn tại thì dùng lại, chưa có thì tạo mới.
+     */
+    private Customer resolveCustomer(InvoiceDTO dto) {
+        String phone = dto.getClientPhone();
+        if (phone == null || phone.isBlank()) {
+            throw new RuntimeException("Cần cung cấp số điện thoại khách hàng để tạo hóa đơn");
+        }
+        return customerRepository.findByPhone(phone.trim())
+                .orElseGet(() -> {
+                    Customer newCustomer = new Customer();
+                    newCustomer.setName(dto.getClientName() != null ? dto.getClientName() : "");
+                    newCustomer.setPhone(phone.trim());
+                    newCustomer.setAddress(dto.getClientAddress());
+                    newCustomer.setTaxCode(dto.getClientTaxCode());
+                    return customerRepository.save(newCustomer);
+                });
     }
 
     private Pageable buildPageable(int page, int limit, String sortBy, String sortOrder, Pageable pageable) {
@@ -250,21 +286,30 @@ public class InvoiceService {
         dto.setCompanyAddress(invoice.getCompanyAddress());
         dto.setCompanyPhone(invoice.getCompanyPhone());
         dto.setCompanyEmail(invoice.getCompanyEmail());
-        
-        dto.setClientName(invoice.getClientName());
-        dto.setClientAddress(invoice.getClientAddress());
-        dto.setClientPhone(invoice.getClientPhone());
-        
+        dto.setCompanyBank(invoice.getCompanyBank());
+        dto.setCompanyZalo(invoice.getCompanyZalo());
+
+        if (invoice.getCustomer() != null) {
+            Customer c = invoice.getCustomer();
+            dto.setCustomerId(c.getId());
+            dto.setClientName(c.getName());
+            dto.setClientAddress(c.getAddress());
+            dto.setClientPhone(c.getPhone());
+            dto.setClientTaxCode(c.getTaxCode());
+        }
+
         if (invoice.getItems() != null) {
             dto.setItems(invoice.getItems().stream()
-                    .map(item -> new InvoiceItemDTO(
-                            item.getId(),
-                            item.getProductName(),
-                            item.getUnit(),
-                            item.getQuantity(),
-                            item.getUnitPrice(),
-                            item.getTotal()
-                    ))
+                    .map(item -> {
+                        InvoiceItemDTO itemDTO = new InvoiceItemDTO();
+                        itemDTO.setId(item.getId());
+                        itemDTO.setProductName(item.getProductName());
+                        itemDTO.setUnit(item.getUnit());
+                        itemDTO.setQuantity(item.getQuantity());
+                        itemDTO.setUnitPrice(item.getUnitPrice());
+                        itemDTO.setTotal(item.getTotal());
+                        return itemDTO;
+                    })
                     .collect(Collectors.toList()));
         }
         
