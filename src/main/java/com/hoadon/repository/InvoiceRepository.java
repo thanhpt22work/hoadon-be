@@ -15,19 +15,36 @@ import java.util.Optional;
 
 @Repository
 public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
-    
+
     Optional<Invoice> findByInvoiceNumber(String invoiceNumber);
-    
+
     Page<Invoice> findByStatus(InvoiceStatus status, Pageable pageable);
-    
+
     Page<Invoice> findByCustomer_NameContainingIgnoreCase(String customerName, Pageable pageable);
-    
+
     Page<Invoice> findByInvoiceDateBetween(LocalDate startDate, LocalDate endDate, Pageable pageable);
-    
+
     List<Invoice> findByStatus(InvoiceStatus status);
-    
-    @Query("SELECT i FROM Invoice i WHERE i.status = :status")
-    Page<Invoice> findByStatusCustom(@Param("status") InvoiceStatus status, Pageable pageable);
+
+    @Query(value =
+           "SELECT i.* FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE " +
+           "(CAST(:status AS text) IS NULL OR i.status = CAST(:status AS text)) AND " +
+           "(CAST(:search AS text) IS NULL OR LOWER(c.name) LIKE '%' || LOWER(CAST(:search AS text)) || '%' OR c.phone LIKE '%' || CAST(:search AS text) || '%') AND " +
+           "(CAST(:fromDate AS text) IS NULL OR i.invoice_date >= CAST(:fromDate AS date)) AND " +
+           "(CAST(:toDate AS text) IS NULL OR i.invoice_date <= CAST(:toDate AS date))",
+           countQuery =
+           "SELECT COUNT(i.id) FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE " +
+           "(CAST(:status AS text) IS NULL OR i.status = CAST(:status AS text)) AND " +
+           "(CAST(:search AS text) IS NULL OR LOWER(c.name) LIKE '%' || LOWER(CAST(:search AS text)) || '%' OR c.phone LIKE '%' || CAST(:search AS text) || '%') AND " +
+           "(CAST(:fromDate AS text) IS NULL OR i.invoice_date >= CAST(:fromDate AS date)) AND " +
+           "(CAST(:toDate AS text) IS NULL OR i.invoice_date <= CAST(:toDate AS date))",
+           nativeQuery = true)
+    Page<Invoice> findWithFilters(
+            @Param("status") String status,
+            @Param("search") String search,
+            @Param("fromDate") String fromDate,
+            @Param("toDate") String toDate,
+            Pageable pageable);
 
     @Query("SELECT i.invoiceNumber FROM Invoice i WHERE i.invoiceNumber IS NOT NULL")
     List<String> findAllInvoiceNumbers();

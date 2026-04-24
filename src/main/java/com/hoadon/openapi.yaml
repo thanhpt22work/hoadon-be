@@ -107,7 +107,7 @@ paths:
           name: search
           schema:
             type: string
-          description: Search by invoice number or client name.
+          description: Search by client name or client phone number.
         - in: query
           name: fromDate
           schema:

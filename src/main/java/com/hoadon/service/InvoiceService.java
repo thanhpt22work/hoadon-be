@@ -85,14 +85,12 @@ public class InvoiceService {
         invoice.setCompanyBank(invoiceDTO.getCompanyBank());
         invoice.setCompanyZalo(invoiceDTO.getCompanyZalo());
         
-        Customer customer = customerRepository.findById(invoiceDTO.getCustomerId())
-                .orElseThrow(() -> new RuntimeException("Customer not found: " + invoiceDTO.getCustomerId()));
+        Customer customer = resolveCustomer(invoiceDTO);
         invoice.setCustomer(customer);
 
         // Update items
         if (invoiceDTO.getItems() != null) {
-            invoice.getItems().clear();
-            List<InvoiceItem> items = invoiceDTO.getItems().stream()
+            List<InvoiceItem> newItems = invoiceDTO.getItems().stream()
                     .map(itemDTO -> {
                         InvoiceItem item = new InvoiceItem();
                         item.setProductName(itemDTO.getProductName());
@@ -103,7 +101,8 @@ public class InvoiceService {
                         return item;
                     })
                     .collect(Collectors.toList());
-            invoice.setItems(items);
+            invoice.getItems().clear();
+            invoice.getItems().addAll(newItems);
         }
         
         invoice.setTotal(invoiceDTO.getTotal());
@@ -152,22 +151,15 @@ public class InvoiceService {
             Pageable pageable) {
         Pageable resolvedPageable = buildPageable(page, limit, sortBy, sortOrder, pageable);
 
-        if (search != null && !search.isBlank()) {
-            return searchInvoices(search, resolvedPageable);
-        }
+        InvoiceStatus invoiceStatus = (status != null && !status.isBlank())
+                ? InvoiceStatus.valueOf(status.toUpperCase()) : null;
+        String statusParam = invoiceStatus != null ? invoiceStatus.name() : null;
+        String searchParam = (search != null && !search.isBlank()) ? search : null;
+        String fromParam = (fromDate != null && !fromDate.isBlank()) ? fromDate : null;
+        String toParam = (toDate != null && !toDate.isBlank()) ? toDate : null;
 
-        if (status != null && !status.isBlank()) {
-            return getInvoicesByStatus(status, resolvedPageable);
-        }
-
-        if (fromDate != null && !fromDate.isBlank() && toDate != null && !toDate.isBlank()) {
-            LocalDate start = LocalDate.parse(fromDate);
-            LocalDate end = LocalDate.parse(toDate);
-            return invoiceRepository.findByInvoiceDateBetween(start, end, resolvedPageable)
-                    .map(this::convertToDTO);
-        }
-
-        return getAllInvoices(resolvedPageable);
+        return invoiceRepository.findWithFilters(statusParam, searchParam, fromParam, toParam, resolvedPageable)
+                .map(this::convertToDTO);
     }
 
     public InvoiceDTO getInvoiceById(String id) {
@@ -245,9 +237,13 @@ public class InvoiceService {
 
         int pageIndex = Math.max(page - 1, 0);
         int pageSize = limit > 0 ? limit : 20;
-        String sortField = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
+        String sortField = toSnakeCase((sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy);
         Sort.Direction direction = "asc".equalsIgnoreCase(sortOrder) ? Sort.Direction.ASC : Sort.Direction.DESC;
         return PageRequest.of(pageIndex, pageSize, Sort.by(direction, sortField));
+    }
+
+    private String toSnakeCase(String camel) {
+        return camel.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
     }
 
     private Long parseId(String id) {

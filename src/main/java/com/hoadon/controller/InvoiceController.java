@@ -1,10 +1,10 @@
 package com.hoadon.controller;
 
 import com.hoadon.dto.InvoiceDTO;
+import com.hoadon.dto.PagedResponse;
 import com.hoadon.service.InvoiceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,7 +32,7 @@ public class InvoiceController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<InvoiceDTO>> getAllInvoices(
+    public ResponseEntity<PagedResponse<InvoiceDTO>> getAllInvoices(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String fromDate,
@@ -42,10 +42,9 @@ public class InvoiceController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortOrder
     ) {
-        // TODO: Map params to service
-        Pageable pageable = Pageable.unpaged(); // Cần chỉnh lại cho đúng phân trang
-        Page<InvoiceDTO> invoices = invoiceService.getAllInvoicesWithFilter(status, search, fromDate, toDate, page, limit, sortBy, sortOrder, pageable);
-        return ResponseEntity.ok(invoices);
+        Page<InvoiceDTO> result = invoiceService.getAllInvoicesWithFilter(
+                status, search, fromDate, toDate, page, limit, sortBy, sortOrder, null);
+        return ResponseEntity.ok(PagedResponse.of(result, page, limit));
     }
     
     @GetMapping("/{id}")
@@ -54,6 +53,7 @@ public class InvoiceController {
         return ResponseEntity.ok(invoice);
     }
     
+    @PutMapping("/{id}")
     @PatchMapping("/{id}")
     public ResponseEntity<InvoiceDTO> updateInvoice(
             @PathVariable String id,
