@@ -18,8 +18,116 @@ tags:
     description: Customer management
   - name: Payments
     description: Payment recording for invoices
+  - name: Prices
+    description: Price list management (import price & sale price per product)
 
-paths:
+  /api/prices:
+    get:
+      tags: [Prices]
+      summary: List price items (paginated)
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search by product name (partial match, case-insensitive)
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Paginated price list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceListResponse'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Prices]
+      summary: Create price item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriceRequest'
+      responses:
+        '201':
+          description: Price item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Price'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/prices/{id}:
+    put:
+      tags: [Prices]
+      summary: Update price item
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriceRequest'
+      responses:
+        '200':
+          description: Price item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Price'
+        '404':
+          description: Price item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Prices]
+      summary: Delete price item
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted successfully
+        '404':
+          description: Price item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/customers:
     get:
       tags: [Customers]
@@ -73,6 +181,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Customer'
+        '409':
+          description: Phone number already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Số điện thoại đã được sử dụng bởi khách hàng khác"
 
   /api/customers/{id}:
     put:
@@ -97,18 +213,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Customer'
+        '404':
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Phone number already used by another customer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                message: "Số điện thoại đã được sử dụng bởi khách hàng khác"
     delete:
       tags: [Customers]
       summary: Delete customer
+      description: |
+        Deletes a customer.
+        - If `deleteInvoices=false` (default): set `customerId = null` on all related invoices, then delete the customer.
+        - If `deleteInvoices=true`: delete all related invoices first, then delete the customer.
       parameters:
         - in: path
           name: id
           required: true
           schema:
             type: integer
+        - in: query
+          name: deleteInvoices
+          schema:
+            type: boolean
+            default: false
+          description: If true, delete all related invoices. If false (default), unlink them (set customerId to null).
       responses:
         '204':
-          description: Deleted
+          description: Customer deleted successfully
+        '404':
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /api/invoices:
     get:
@@ -414,7 +560,7 @@ components:
 
     InvoiceStatus:
       type: string
-      enum: [paid, pending, overdue]
+      enum: [paid, pending]
 
     Money:
       type: number
@@ -676,6 +822,68 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Invoice'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    Price:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Tôn Hoa Sen 0.45mm
+        importPrice:
+          type: number
+          format: double
+          minimum: 0
+          nullable: true
+          example: 100000
+        salePrice:
+          type: number
+          format: double
+          minimum: 0
+          nullable: true
+          example: 150000
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PriceRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: Tôn Hoa Sen 0.45mm
+        importPrice:
+          type: number
+          format: double
+          minimum: 0
+          nullable: true
+          example: 100000
+        salePrice:
+          type: number
+          format: double
+          minimum: 0
+          nullable: true
+          example: 150000
+
+    PriceListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Price'
         meta:
           $ref: '#/components/schemas/PaginationMeta'
 

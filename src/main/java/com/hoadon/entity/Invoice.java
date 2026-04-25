@@ -39,7 +39,7 @@ public class Invoice {
     
     // Customer (client) - FK → customers table
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "customer_id", nullable = false)
+    @JoinColumn(name = "customer_id", nullable = true)
     private Customer customer;
 
     // Invoice Details

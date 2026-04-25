@@ -5,6 +5,7 @@ import com.hoadon.entity.InvoiceStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -27,13 +28,13 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
     List<Invoice> findByStatus(InvoiceStatus status);
 
     @Query(value =
-           "SELECT i.* FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE " +
+           "SELECT i.* FROM invoices i LEFT JOIN customers c ON i.customer_id = c.id WHERE " +
            "(CAST(:status AS text) IS NULL OR i.status = CAST(:status AS text)) AND " +
            "(CAST(:search AS text) IS NULL OR LOWER(c.name) LIKE '%' || LOWER(CAST(:search AS text)) || '%' OR c.phone LIKE '%' || CAST(:search AS text) || '%') AND " +
            "(CAST(:fromDate AS text) IS NULL OR i.invoice_date >= CAST(:fromDate AS date)) AND " +
            "(CAST(:toDate AS text) IS NULL OR i.invoice_date <= CAST(:toDate AS date))",
            countQuery =
-           "SELECT COUNT(i.id) FROM invoices i JOIN customers c ON i.customer_id = c.id WHERE " +
+           "SELECT COUNT(i.id) FROM invoices i LEFT JOIN customers c ON i.customer_id = c.id WHERE " +
            "(CAST(:status AS text) IS NULL OR i.status = CAST(:status AS text)) AND " +
            "(CAST(:search AS text) IS NULL OR LOWER(c.name) LIKE '%' || LOWER(CAST(:search AS text)) || '%' OR c.phone LIKE '%' || CAST(:search AS text) || '%') AND " +
            "(CAST(:fromDate AS text) IS NULL OR i.invoice_date >= CAST(:fromDate AS date)) AND " +
@@ -48,4 +49,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Long> {
 
     @Query("SELECT i.invoiceNumber FROM Invoice i WHERE i.invoiceNumber IS NOT NULL")
     List<String> findAllInvoiceNumbers();
+
+    @Modifying
+    @Query("UPDATE Invoice i SET i.customer = NULL WHERE i.customer.id = :customerId")
+    void detachCustomer(@Param("customerId") Long customerId);
+
+    void deleteByCustomerId(Long customerId);
 }

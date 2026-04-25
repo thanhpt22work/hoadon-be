@@ -49,15 +49,7 @@ public class InvoiceService {
         // Create items
         if (invoiceDTO.getItems() != null) {
             List<InvoiceItem> items = invoiceDTO.getItems().stream()
-                    .map(itemDTO -> {
-                        InvoiceItem item = new InvoiceItem();
-                        item.setProductName(itemDTO.getProductName());
-                        item.setUnit(itemDTO.getUnit());
-                        item.setQuantity(itemDTO.getQuantity());
-                        item.setUnitPrice(itemDTO.getUnitPrice());
-                        item.setTotal(itemDTO.getQuantity().multiply(itemDTO.getUnitPrice()));
-                        return item;
-                    })
+                    .map(this::toItem)
                     .collect(Collectors.toList());
             invoice.setItems(items);
         }
@@ -91,15 +83,7 @@ public class InvoiceService {
         // Update items
         if (invoiceDTO.getItems() != null) {
             List<InvoiceItem> newItems = invoiceDTO.getItems().stream()
-                    .map(itemDTO -> {
-                        InvoiceItem item = new InvoiceItem();
-                        item.setProductName(itemDTO.getProductName());
-                        item.setUnit(itemDTO.getUnit());
-                        item.setQuantity(itemDTO.getQuantity());
-                        item.setUnitPrice(itemDTO.getUnitPrice());
-                        item.setTotal(itemDTO.getQuantity().multiply(itemDTO.getUnitPrice()));
-                        return item;
-                    })
+                    .map(this::toItem)
                     .collect(Collectors.toList());
             invoice.getItems().clear();
             invoice.getItems().addAll(newItems);
@@ -219,7 +203,7 @@ public class InvoiceService {
         if (phone == null || phone.isBlank()) {
             throw new RuntimeException("Cần cung cấp số điện thoại khách hàng để tạo hóa đơn");
         }
-        return customerRepository.findByPhone(phone.trim())
+        return customerRepository.findFirstByPhone(phone.trim())
                 .orElseGet(() -> {
                     Customer newCustomer = new Customer();
                     newCustomer.setName(dto.getClientName() != null ? dto.getClientName() : "");
@@ -271,6 +255,28 @@ public class InvoiceService {
         return new BigDecimal(amountValue.toString());
     }
     
+    private InvoiceItem toItem(InvoiceItemDTO itemDTO) {
+        InvoiceItem item = new InvoiceItem();
+        item.setProductName(itemDTO.getProductName());
+        item.setUnit(itemDTO.getUnit());
+        item.setLength(itemDTO.getLength());
+        item.setWidth(itemDTO.getWidth());
+
+        BigDecimal qty = itemDTO.getQuantity() != null ? itemDTO.getQuantity() : BigDecimal.ONE;
+        item.setQuantity(qty);
+        item.setUnitPrice(itemDTO.getUnitPrice());
+
+        // total: dùng FE nếu có, fallback tính lại
+        if (itemDTO.getTotal() != null) {
+            item.setTotal(itemDTO.getTotal());
+        } else if (itemDTO.getLength() != null && itemDTO.getWidth() != null) {
+            item.setTotal(itemDTO.getLength().multiply(itemDTO.getWidth()).multiply(itemDTO.getUnitPrice()));
+        } else {
+            item.setTotal(qty.multiply(itemDTO.getUnitPrice()));
+        }
+        return item;
+    }
+
     private InvoiceDTO convertToDTO(Invoice invoice) {
         InvoiceDTO dto = new InvoiceDTO();
         dto.setId(invoice.getId());
@@ -301,6 +307,8 @@ public class InvoiceService {
                         itemDTO.setId(item.getId());
                         itemDTO.setProductName(item.getProductName());
                         itemDTO.setUnit(item.getUnit());
+                        itemDTO.setLength(item.getLength());
+                        itemDTO.setWidth(item.getWidth());
                         itemDTO.setQuantity(item.getQuantity());
                         itemDTO.setUnitPrice(item.getUnitPrice());
                         itemDTO.setTotal(item.getTotal());

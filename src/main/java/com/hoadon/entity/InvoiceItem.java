@@ -23,6 +23,12 @@ public class InvoiceItem {
     @Column(nullable = false)
     private String unit;
     
+    @Column(precision = 10, scale = 2)
+    private BigDecimal length;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal width;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal quantity;
     
@@ -34,6 +40,9 @@ public class InvoiceItem {
     
     @PrePersist
     protected void onCreate() {
+        if (quantity == null) {
+            quantity = BigDecimal.ONE;
+        }
         if (total == null) {
             total = quantity.multiply(unitPrice);
         }

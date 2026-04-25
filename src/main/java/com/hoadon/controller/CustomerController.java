@@ -38,8 +38,10 @@ public class CustomerController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCustomer(@PathVariable Long id) {
-        customerService.deleteCustomer(id);
+    public ResponseEntity<Void> deleteCustomer(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean deleteInvoices) {
+        customerService.deleteCustomer(id, deleteInvoices);
         return ResponseEntity.noContent().build();
     }
 }
