@@ -28,6 +28,12 @@ public class Price {
     @Column(precision = 15, scale = 2)
     private BigDecimal salePrice;
 
+    @Column(length = 500)
+    private String note;
+
+    @Column
+    private String imageUrl;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

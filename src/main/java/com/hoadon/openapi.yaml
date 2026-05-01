@@ -66,6 +66,16 @@ tags:
           application/json:
             schema:
               $ref: '#/components/schemas/PriceRequest'
+          multipart/form-data:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/PriceRequest'
+                - type: object
+                  properties:
+                    image:
+                      type: string
+                      format: binary
+                      description: Product image file (JPG, PNG, WEBP, max 5MB)
       responses:
         '201':
           description: Price item created
@@ -96,6 +106,16 @@ tags:
           application/json:
             schema:
               $ref: '#/components/schemas/PriceRequest'
+          multipart/form-data:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/PriceRequest'
+                - type: object
+                  properties:
+                    image:
+                      type: string
+                      format: binary
+                      description: Product image file (JPG, PNG, WEBP, max 5MB)
       responses:
         '200':
           description: Price item updated
@@ -847,6 +867,15 @@ components:
           minimum: 0
           nullable: true
           example: 150000
+        note:
+          type: string
+          maxLength: 500
+          nullable: true
+          example: Kho A, kệ số 3
+        imageUrl:
+          type: string
+          nullable: true
+          example: https://cdn.songhong.vn/products/ton-hoa-sen.jpg
         createdAt:
           type: string
           format: date-time
@@ -875,6 +904,11 @@ components:
           minimum: 0
           nullable: true
           example: 150000
+        note:
+          type: string
+          maxLength: 500
+          nullable: true
+          example: Kho A, kệ số 3
 
     PriceListResponse:
       type: object

@@ -2,11 +2,16 @@ package com.hoadon.controller;
 
 import com.hoadon.dto.PagedResponse;
 import com.hoadon.dto.PriceDTO;
+import com.hoadon.dto.PriceRequest;
 import com.hoadon.service.PriceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/prices")
@@ -25,16 +30,39 @@ public class PriceController {
         return ResponseEntity.ok(priceService.getAllPrices(search, page, limit));
     }
 
-    @PostMapping
-    public ResponseEntity<PriceDTO> createPrice(@RequestBody PriceDTO dto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(priceService.createPrice(dto));
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<PriceDTO> createPrice(@RequestBody PriceRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(priceService.createPrice(request, null));
     }
 
-    @PutMapping("/{id}")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PriceDTO> createPriceMultipart(
+            @RequestParam String name,
+            @RequestParam(required = false) BigDecimal importPrice,
+            @RequestParam(required = false) BigDecimal salePrice,
+            @RequestParam(required = false) String note,
+            @RequestPart(value = "image", required = false) MultipartFile image) {
+        PriceRequest request = new PriceRequest(name, importPrice, salePrice, note, null);
+        return ResponseEntity.status(HttpStatus.CREATED).body(priceService.createPrice(request, image));
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<PriceDTO> updatePrice(
             @PathVariable Long id,
-            @RequestBody PriceDTO dto) {
-        return ResponseEntity.ok(priceService.updatePrice(id, dto));
+            @RequestBody PriceRequest request) {
+        return ResponseEntity.ok(priceService.updatePrice(id, request, null));
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PriceDTO> updatePriceMultipart(
+            @PathVariable Long id,
+            @RequestParam String name,
+            @RequestParam(required = false) BigDecimal importPrice,
+            @RequestParam(required = false) BigDecimal salePrice,
+            @RequestParam(required = false) String note,
+            @RequestPart(value = "image", required = false) MultipartFile image) {
+        PriceRequest request = new PriceRequest(name, importPrice, salePrice, note, null);
+        return ResponseEntity.ok(priceService.updatePrice(id, request, image));
     }
 
     @DeleteMapping("/{id}")
@@ -43,3 +71,4 @@ public class PriceController {
         return ResponseEntity.noContent().build();
     }
 }
+
