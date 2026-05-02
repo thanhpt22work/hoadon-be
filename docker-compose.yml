@@ -17,6 +17,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/hoadon_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      APP_BASE_URL: https://api.tonsatsonghong.com/api
     depends_on:
       - postgres
     volumes:
