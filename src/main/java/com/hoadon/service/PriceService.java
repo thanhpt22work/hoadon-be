@@ -57,7 +57,12 @@ public class PriceService {
         }
         return toDTO(priceRepository.save(price));
     }
-
+    /**
+     * Cập nhật thông tin price item.
+     * - Nếu có ảnh mới: xóa ảnh cũ, lưu ảnh mới
+     * - Nếu không có ảnh mới và imageUrl = null: xóa ảnh cũ
+     * - Nếu không có ảnh mới và imageUrl có giá trị: giữ nguyên ảnh cũ
+     */
     public PriceDTO updatePrice(Long id, PriceRequest request, MultipartFile image) {
         Price price = priceRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Price item not found"));
